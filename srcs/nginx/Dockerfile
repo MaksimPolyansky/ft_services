@@ -1,30 +1,27 @@
-#OS
-FROM alpine:latest
+FROM alpine
 
-#install
 RUN apk update && apk upgrade
+
 RUN apk add nginx openssl openssh supervisor openrc
 
-#ssl
-RUN openssl req -newkey rsa:2048 -x509 -sha256 \
-	-days 365 -nodes -out /etc/ssl/heusebio.crt \
-	-keyout /etc/ssl/heusebio.key \
-	-subj "/C=RU/ST=Russia/L=Moscow/O=School 21/OU=heusebio/CN=valenok"
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+	-keyout /etc/ssl/private/nginx-selfsigned.key \
+	-out /etc/ssl/certs/nginx-selfsigned.crt \
+	-subj "/C=RU/ST=Moscow/L=Moscow/O=School21/CN=heusebio"
 
-#ssh
-RUN adduser -D 'valenok' && echo "valenok:password" | chpasswd
+RUN mkdir www
 
-RUN mkdir /www/
-COPY index.html style.css /www/
+COPY srcs/start.sh start.sh
+COPY srcs/default /etc/nginx/conf.d/default.conf
+COPY srcs/supervisord.conf /etc/supervisord.conf
+COPY srcs/index.html /www/index.html
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-COPY start.sh /tmp/start.sh
-
-COPY supervisor.conf /etc/supervisor.conf
-
-RUN chmod +x /tmp/start.sh
+RUN mkdir -p /run/nginx
+RUN mkdir /run/sshd
+RUN chmod -R 777 start.sh
+RUN chmod -R 777 /run/nginx
+RUN chmod -R 777 /run/sshd
+RUN chmod -R 777 /www
 
 EXPOSE 80 443 22
-
-CMD [ "/tmp/start.sh" ]
+CMD [ "sh" , "start.sh" ]
